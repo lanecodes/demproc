@@ -12,6 +12,7 @@ from osgeo import gdal, osr
 from pyproj import Proj
 
 from demproc import make_hydro_correct_dem, read_geotiff_as_array
+from trim import trim_geotiff_edge
 
 def create_dummy_geotiff_from_array(tgt_fname, array):
     """Use a numpy array to create a dummy geotiff file for testing.
@@ -58,6 +59,9 @@ class DemProcTestCase(unittest.TestCase):
     def test_make_hydro_correct_dem(self):
         make_dummy_hydro_incorrect_dem()
         
+        make_hydro_correct_dem("hydro_incorrect_dummy.tif", 
+            "hydro_correct_dummy.tif")
+
         # note the pit in second row has been removed
         expected_arr = np.array([
             [2, 2, 2, 3, 2], 
@@ -65,9 +69,39 @@ class DemProcTestCase(unittest.TestCase):
             [2, 2, 2, 3, 2], 
             [3, 3, 4, 4, 3],
             [2, 2, 3, 3, 2]])
-        
-        make_hydro_correct_dem("hydro_incorrect_dummy.tif", 
-            "hydro_correct_dummy.tif")
 
         self.assertTrue(np.array_equal(
             read_geotiff_as_array("hydro_correct_dummy.tif"), expected_arr))
+
+
+class TrimTestCase(unittest.TestCase):
+
+    def test_trim_geotiff_edge(self):
+        """Trim one cell from each edge of the test grid."""
+        make_dummy_hydro_incorrect_dem()
+        trim_geotiff_edge("hydro_incorrect_dummy.tif", "trimmed_dem.tif")
+        
+        # outer edge removed
+        expected_arr = np.array([            
+            [1, 2, 3], 
+            [2, 2, 3], 
+            [3, 4, 4]])
+
+        self.assertTrue(np.array_equal(
+            read_geotiff_as_array("trimmed_dem.tif"), expected_arr))
+
+    def test_trim_geotiff_edge_two_cells_each_side(self):
+        """Should be able to trim two grid cells from each side of grid."""
+        make_dummy_hydro_incorrect_dem()
+        trim_geotiff_edge("hydro_incorrect_dummy.tif", "trimmed_dem.tif", n=2)
+        
+        # outer edge removed
+        expected_arr = np.array([[2]])
+
+        self.assertTrue(np.array_equal(
+            read_geotiff_as_array("trimmed_dem.tif"), expected_arr))
+
+
+
+
+
