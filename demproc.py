@@ -23,16 +23,18 @@ from shutil import copyfile
 from osgeo import gdal
 import numpy as np
 
-def get_suffixed_fname(original_fname, suffix):
-    """Add a suffix to a given filename.
+from trim import trim_geotiff_edge
+
+def add_prefix_to_fname(original_fname, prefix):
+    """Add a prefix to a given filename.
 
     Examples:
-        >>> get_suffixed_fname("file1.txt", "_new")
-        "file1_new.txt"
+        >>> add_prefix_to_fname("data.tif", "London")
+        "London_data.tif"
     """
     file_dir = os.path.dirname(original_fname)
-    file_basename_no_ext, ext = os.path.basename(original_fname).split(".")
-    new_basename = file_basename_no_ext + suffix + "." + ext
+    file_basename = os.path.basename(original_fname)
+    new_basename = "_".join([prefix, file_basename])
     return os.path.join(file_dir, new_basename)
 
 def read_geotiff_as_array(tgt_fname):
@@ -57,19 +59,17 @@ def make_hydro_correct_dem(dem_fname, hydro_correct_dem_fname=None):
             Digital Elevation Model.
         hydro_correct_dem_fname (str, optional): Path for the GeoTiff file 
             containing the corrected DEM. Defaults to 
-            `<path-to-original>-hydrocorrect.tif`
+            `hydrocorrect_dem.tif`
     
     Returns: 
         None
     """
     print("Calculating hydrologically corrected DEM...")
-    if hydro_correct_dem_fname:
-        out_fname = hydro_correct_dem_fname
-    else:
-        out_fname = get_suffixed_fname(dem_fname, "-hydrocorrect")
+    if not hydro_correct_dem_fname:
+        hydro_correct_dem_fname = "hydrocorrect_dem.tif"
         
     run(["mpiexec", "-n", "2", "pitremove", "-z", dem_fname, "-fel",
-         out_fname])
+         hydro_correct_dem_fname])
 
 def make_flow_direction_map(dem_fname, flow_dir_map_fname=None):
     """ Make a flow direction map given a Digital Elevation Model.
@@ -128,13 +128,13 @@ def make_continuous_aspect_map(dem_fname, aspect_map_fname=None):
         dem_fname (str): Path to the GeoTiff file containing the source
             Digital Elevation Model.
         aspect_map_fname (str, optional): Path for the GeoTiff file containing 
-            the generated aspect map. Defaults to `continuous-aspect.tif`.
+            the generated aspect map. Defaults to `continuous_aspect.tif`.
     
     Returns: 
         None    
     """
     if not aspect_map_fname:
-        aspect_map_fname = "continuous-aspect.tif"
+        aspect_map_fname = "continuous_aspect.tif"
     print("Calculating aspect...")
     run(["gdaldem", "aspect",  dem_fname, aspect_map_fname, "-trigonometric",
         "-zero_for_flat"])
@@ -150,13 +150,13 @@ def make_binary_aspect_map(continuous_aspect_map_fname,
             GeoTiff file.
         binary_aspect_map_fname (str, optional): Path for the GeoTiff file 
             containing the generated binary aspect map. Defaults to 
-            `binary-aspect.tif`.
+            `binary_aspect.tif`.
     
     Returns: 
         None    
     """
     if not binary_aspect_map_fname:
-        binary_aspect_map_fname = "binary-aspect.tif"
+        binary_aspect_map_fname = "binary_aspect.tif"
 
     print("Calculating aspect...")
     copyfile(continuous_aspect_map_fname, binary_aspect_map_fname)
@@ -167,12 +167,61 @@ def make_binary_aspect_map(continuous_aspect_map_fname,
     aspect_raster.GetRasterBand(1).WriteArray(band[0,:,:])
     aspect_raster=None
 
-if __name__ == "__main__":
-    make_hydro_correct_dem("hydro_incorrect_dummy.tif",
-                           "hydro_correct_dummy.tif")
+def derive_all(dem_fname, name_prefix=None, remove_pits=True, trim_edge=1):
+    """Derive raster layers based on Digital Elevation Model.
 
-    make_flow_direction_map("hydro_correct_dummy.tif")
-    make_slope_map("hydro_correct_dummy.tif")
-    make_continuous_aspect_map("hydro_correct_dummy.tif")
-    make_binary_aspect_map("continuous-aspect.tif")
-        
+    Args:
+        dem_fname (str): Path to the GeoTiff file containing the source
+            Digital Elevation Model.
+        name_prefix (str, optional): Prefix given to all generated files, if 
+            given. Defaults to None.
+        remove_pits (boolean, optional): Whether or not to produce a 
+            hydrologically corrected DEM. Defaults to True
+        trim_edge (int, optional): Number of pixels to remove from each edge
+            of the output files. Useful to remove 'missing data' cells at the 
+            edge of flow direction maps.
+
+    Returns:
+        None    
+    """
+    layers = {
+        "hydro_correct_dem": {"name": "hydrocorrect_dem.tif",
+                              "func": make_hydro_correct_dem},
+        "flow_direction_map": {"name": "flowdir.tif",
+                               "func": make_flow_direction_map},
+        "slope_map": {"name": "slope.tif",            
+                      "func": make_slope_map},
+        "continuous_aspect_map": {"name": "continuous_aspect.tif", 
+                                  "func": make_continuous_aspect_map},
+        "binary_aspect_map": {"name": "binary_aspect.tif", 
+                              "func": make_binary_aspect_map}
+    }
+
+    if name_prefix:
+        for k in layers.keys():
+            layers[k]["name"] = add_prefix_to_fname(
+                layers[k]["name"], name_prefix)
+
+    def proc_layer(in_fname, out_fname, f, trim_edge):
+        f(in_fname, out_fname)
+        if trim_edge:
+            trim_geotiff_edge(out_fname, out_fname, n=trim_edge)
+
+    if remove_pits:
+        new_dem_fname = layers["hydro_correct_dem"]["name"]
+        proc_layer(dem_fname, new_dem_fname, 
+            layers["hydro_correct_dem"]["func"], trim_edge=0)        
+    else:
+        new_dem_fname = dem_fname
+
+    for layer_name in ["flow_direction_map", "slope_map", 
+        "continuous_aspect_map"]:
+        layer = layers[layer_name]
+        proc_layer(new_dem_fname, layer["name"], layer["func"], trim_edge)
+
+    layer = layers["binary_aspect_map"]
+    # Don't trim binary aspect map again, continuous aspect map already trimmed
+    layer["func"](layers["continuous_aspect_map"]["name"], layer["name"])
+
+if __name__ == "__main__":
+    derive_all("hydro_incorrect_dummy.tif")

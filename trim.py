@@ -7,7 +7,9 @@ Functions to trim the outermost cells from a raster in a GeoTiff file.
 See https://gis.stackexchange.com/questions/42584/how-to-call-gdal-translate-f\
     rom-python-code.
 """
+import shutil
 from osgeo import gdal
+
 
 def trim_geotiff_edge(src_name, tgt_name, n=1):
     """Make a new GeoTiff with n pixels trimmed from each edge.
@@ -33,5 +35,10 @@ def trim_geotiff_edge(src_name, tgt_name, n=1):
 
     # See osgeo.gdal.TranslateOptions.
     # srcWin --- subwindow in pixels to extract: [left_x, top_y, width, height]
-    ds = gdal.Translate(tgt_name, ds, srcWin=[n, n, tgt_width, tgt_height])
+    ds = gdal.Translate("tmp.tif", ds, srcWin=[n, n, tgt_width, tgt_height])
+    ds = None
+
+    shutil.move("tmp.tif", tgt_name) # overrites src if same as target
+
+
 
