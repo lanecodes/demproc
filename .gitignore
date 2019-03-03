@@ -1,5 +1,6 @@
 # editor fluff
 *~
+.vscode/*
 
 # pycache
 __pycache__/*
