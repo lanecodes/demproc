@@ -1,5 +1,5 @@
 """
-dem_derive.py
+demproc.py
 ~~~~~~~~~~~~~
 
 Given a GeoTiff file name as input, calculate the following outputs:

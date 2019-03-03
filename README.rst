@@ -1,5 +1,5 @@
 ============================================================
-dem_derive
+DEMproc
 ============================================================
 
 Derive various raster layers based on a Digital Elevation Model.
@@ -8,6 +8,7 @@ Fundamentally a wrapper around TauDEM_ and gdal_, so working installations of
 those are required.
 
 Currently implemented:
+
 - Hydrologically correct DEM (remove pits)
 - Flow direction map
 - Slope map

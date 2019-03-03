@@ -1,7 +1,9 @@
 """
-test_dem_derive.py
+test_demproc.py
 
-Tests for dem_derive.py
+Tests for demproc.py
+
+TODO Ensure dummy tifs are created in a temporary directory
 """
 import unittest
 
@@ -9,7 +11,7 @@ import numpy as np
 from osgeo import gdal, osr
 from pyproj import Proj
 
-from dem_derive import make_hydro_correct_dem, read_geotiff_as_array
+from demproc import make_hydro_correct_dem, read_geotiff_as_array
 
 def create_dummy_geotiff_from_array(tgt_fname, array):
     """Use a numpy array to create a dummy geotiff file for testing.
@@ -35,7 +37,7 @@ def create_dummy_geotiff_from_array(tgt_fname, array):
     ds.FlushCache()  # Write to disk.
 
 def make_dummy_hydro_incorrect_dem():
-    # note the 1 in the seconcontinuous-aspect.tifd row is a pit
+    # note the 1 in the second row is a pit which should be removed
     arr = np.array([
         [2, 2, 2, 3, 2], 
         [2, 1, 2, 3, 4], 
@@ -46,7 +48,7 @@ def make_dummy_hydro_incorrect_dem():
     create_dummy_geotiff_from_array("hydro_incorrect_dummy.tif", arr)
 
 
-class DemDeriveTestCase(unittest.TestCase):
+class DemProcTestCase(unittest.TestCase):
     def setUp(self):
         pass
 
