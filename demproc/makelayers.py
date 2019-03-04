@@ -1,5 +1,5 @@
 """
-demproc.py
+makelayers.py
 ~~~~~~~~~~~~~
 
 Given a GeoTiff file name as input, calculate the following outputs:
@@ -23,7 +23,7 @@ from shutil import copyfile
 from osgeo import gdal
 import numpy as np
 
-from trim import trim_geotiff_edge
+from demproc.trim import trim_geotiff_edge
 
 def add_prefix_to_fname(original_fname, prefix):
     """Add a prefix to a given filename.
@@ -217,7 +217,9 @@ def derive_all(dem_fname, name_prefix=None, remove_pits=True, trim_edge=1):
     for layer_name in ["flow_direction_map", "slope_map", 
         "continuous_aspect_map"]:
         layer = layers[layer_name]
-        proc_layer(new_dem_fname, layer["name"], layer["func"], trim_edge)
+        proc_layer(new_dem_fname, layer["name"], layer["func"], 1)
+
+    trim_geotiff_edge(new_dem_fname, new_dem_fname, n=1)
 
     layer = layers["binary_aspect_map"]
     # Don't trim binary aspect map again, continuous aspect map already trimmed

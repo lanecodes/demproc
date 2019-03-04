@@ -10,9 +10,9 @@ import tempfile, shutil
 import numpy as np
 from osgeo import gdal, osr
 
-from demproc import make_hydro_correct_dem, read_geotiff_as_array
-from trim import trim_geotiff_edge
-from dummy import make_dummy_hydro_incorrect_dem
+from demproc.makelayers import make_hydro_correct_dem, read_geotiff_as_array
+from demproc.trim import trim_geotiff_edge
+from demproc.dummy import make_dummy_hydro_incorrect_dem
 
 class DemProcTestCase(unittest.TestCase):
     def setUp(self):
