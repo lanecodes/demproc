@@ -2,65 +2,31 @@
 test_demproc.py
 
 Tests for demproc.py
-
-TODO Ensure dummy tifs are created in a temporary directory
 """
 import unittest
+import os
+import tempfile, shutil
 
 import numpy as np
 from osgeo import gdal, osr
-from pyproj import Proj
 
 from demproc import make_hydro_correct_dem, read_geotiff_as_array
 from trim import trim_geotiff_edge
-
-def create_dummy_geotiff_from_array(tgt_fname, array):
-    """Use a numpy array to create a dummy geotiff file for testing.
-    See https://gis.stackexchange.com/questions/58517/python-gdal-save-array-\
-        as-raster-with-projection-from-other-file.
-    """
-    PIXEL_SIZE = 10
-    X_PIXELS = array.shape[1]
-    Y_PIXELS = array.shape[0]
-
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(27700) # british national grid
-    
-    projection = Proj(init='epsg:27700')
-    x_cc, y_cc = projection(-0.1269505, 51.5081364) # Charing cross in BNG
-
-    driver = gdal.GetDriverByName('GTiff')    
-    ds = driver.Create(tgt_fname, X_PIXELS, Y_PIXELS, 1, gdal.GDT_Int32)
-    # Charing cross is top left hand corner of grid
-    ds.SetGeoTransform((x_cc, PIXEL_SIZE, 0, y_cc, 0, -PIXEL_SIZE))  
-    ds.SetProjection(srs.ExportToWkt())        
-    ds.GetRasterBand(1).WriteArray(array)
-    ds.FlushCache()  # Write to disk.
-
-def make_dummy_hydro_incorrect_dem():
-    # note the 1 in the second row is a pit which should be removed
-    arr = np.array([
-        [2, 2, 2, 3, 2], 
-        [2, 1, 2, 3, 4], 
-        [2, 2, 2, 3, 2], 
-        [3, 3, 4, 4, 3],
-        [2, 2, 3, 3, 2]])
-    
-    create_dummy_geotiff_from_array("hydro_incorrect_dummy.tif", arr)
-
+from dummy import make_dummy_hydro_incorrect_dem
 
 class DemProcTestCase(unittest.TestCase):
     def setUp(self):
-        pass
+        self.test_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        pass
+        shutil.rmtree(self.test_dir)
 
     def test_make_hydro_correct_dem(self):
-        make_dummy_hydro_incorrect_dem()
+        incorrect_dem = os.path.join(self.test_dir, "hydro_incorrect.tif")
+        make_dummy_hydro_incorrect_dem(incorrect_dem)
         
-        make_hydro_correct_dem("hydro_incorrect_dummy.tif", 
-            "hydro_correct_dummy.tif")
+        correct_dem = os.path.join(self.test_dir, "hydro_correct.tif")
+        make_hydro_correct_dem(incorrect_dem, correct_dem)
 
         # note the pit in second row has been removed
         expected_arr = np.array([
@@ -70,16 +36,24 @@ class DemProcTestCase(unittest.TestCase):
             [3, 3, 4, 4, 3],
             [2, 2, 3, 3, 2]])
 
-        self.assertTrue(np.array_equal(
-            read_geotiff_as_array("hydro_correct_dummy.tif"), expected_arr))
+        self.assertTrue(np.array_equal(read_geotiff_as_array(correct_dem), 
+            expected_arr))
 
 
 class TrimTestCase(unittest.TestCase):
 
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir)
+
     def test_trim_geotiff_edge(self):
         """Trim one cell from each edge of the test grid."""
-        make_dummy_hydro_incorrect_dem()
-        trim_geotiff_edge("hydro_incorrect_dummy.tif", "trimmed_dem.tif")
+        incorrect_dem = os.path.join(self.test_dir, "hydro_incorrect.tif")
+        trimmed_dem = os.path.join(self.test_dir, "trimmed_dem.tif")
+        make_dummy_hydro_incorrect_dem(incorrect_dem)
+        trim_geotiff_edge(incorrect_dem, trimmed_dem)
         
         # outer edge removed
         expected_arr = np.array([            
@@ -88,20 +62,18 @@ class TrimTestCase(unittest.TestCase):
             [3, 4, 4]])
 
         self.assertTrue(np.array_equal(
-            read_geotiff_as_array("trimmed_dem.tif"), expected_arr))
+            read_geotiff_as_array(trimmed_dem), expected_arr))
 
     def test_trim_geotiff_edge_two_cells_each_side(self):
         """Should be able to trim two grid cells from each side of grid."""
-        make_dummy_hydro_incorrect_dem()
-        trim_geotiff_edge("hydro_incorrect_dummy.tif", "trimmed_dem.tif", n=2)
+        incorrect_dem = os.path.join(self.test_dir, "hydro_incorrect.tif")
+        trimmed_dem = os.path.join(self.test_dir, "trimmed_dem.tif")
+
+        make_dummy_hydro_incorrect_dem(incorrect_dem)
+        trim_geotiff_edge(incorrect_dem, trimmed_dem, n=2)
         
         # outer edge removed
         expected_arr = np.array([[2]])
 
         self.assertTrue(np.array_equal(
-            read_geotiff_as_array("trimmed_dem.tif"), expected_arr))
-
-
-
-
-
+            read_geotiff_as_array(trimmed_dem), expected_arr))

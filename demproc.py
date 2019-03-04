@@ -222,6 +222,3 @@ def derive_all(dem_fname, name_prefix=None, remove_pits=True, trim_edge=1):
     layer = layers["binary_aspect_map"]
     # Don't trim binary aspect map again, continuous aspect map already trimmed
     layer["func"](layers["continuous_aspect_map"]["name"], layer["name"])
-
-if __name__ == "__main__":
-    derive_all("hydro_incorrect_dummy.tif")
