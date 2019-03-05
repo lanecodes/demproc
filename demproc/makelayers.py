@@ -8,7 +8,7 @@ Given a GeoTiff file name as input, calculate the following outputs:
 2. Flow direction map (1=E, 2=NE, 3=N,..., 8=SE)
 3. Slope (units are percent incline)
 4. Continuous aspect (0 deg=E, 90 deg=N, 180 deg=W, 270 deg=S)
-5. Binary aspect (0 if northerly, 0 if southerly)
+5. Binary aspect (0 if northerly, 1 if southerly)
 
 Horizontal units must be the same as vertical units in DEM for this to work
 
