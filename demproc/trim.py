@@ -10,6 +10,15 @@ See https://gis.stackexchange.com/questions/42584/how-to-call-gdal-translate-f\
 import shutil
 from osgeo import gdal
 
+def geotiff_to_array(fname, band_no=1):
+    """Read a GeoTiff file, return a numpy array containing grid values."""
+    ds = gdal.Open(fname)
+    
+    # Get a numpy array representing the source dataset
+    band = ds.GetRasterBand(1)
+    arr = band.ReadAsArray()
+
+    return arr
 
 def trim_geotiff_edge(src_name, tgt_name, n=1):
     """Make a new GeoTiff with n pixels trimmed from each edge.
