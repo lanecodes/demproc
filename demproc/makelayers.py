@@ -102,7 +102,13 @@ def make_flow_direction_map(dem_fname, flow_dir_map_fname=None):
 def make_slope_map(dem_fname, slope_map_fname=None):
     """ Make a slope map given a Digital Elevation Model.
 
-    Calculated values are percentage incline.
+    Calculated values are percentage incline in the direction of the steepest
+    slope with respect to each cell. As GDAL's implementation of the slope
+    calculation `follows the example`_ of GRASS GIS's implementation, see
+    the `GRASS GIS docs`_ for more information.
+
+    .. _`follows the example`: https://gis.stackexchange.com/questions/344201
+    .. _`GRASS GIS docs`: https://grass.osgeo.org/grass78/manuals/r.slope.aspect.html
 
     Args:
         dem_fname (str): Path to the GeoTiff file containing the source
